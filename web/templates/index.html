@@ -128,6 +128,39 @@ body.finish-mode { background:#0a0a0a; }
 .sp-finish { position:absolute; right:30px; top:8%; bottom:8%; width:10px; background:repeating-linear-gradient(0deg,white 0,white 6px,black 6px,black 12px); border-radius:3px; opacity:.5; }
 .sp-finish-flag { position:absolute; right:16px; top:4%; font-size:1.1rem; opacity:.6; }
 
+/* STOP LABELS */
+.sp-stop-label {
+  position:absolute;
+  bottom:3px;
+  font-family:'DM Mono',monospace;
+  font-size:.45rem;
+  font-weight:500;
+  color:rgba(255,255,255,.55);
+  background:rgba(0,0,0,.45);
+  padding:2px 5px;
+  border-radius:4px;
+  white-space:nowrap;
+  letter-spacing:.06em;
+  pointer-events:none;
+  z-index:5;
+  line-height:1.3;
+}
+.sp-stop-label.start { left:4px; }
+.sp-stop-label.end   { right:36px; }
+.sp-stop-dot {
+  position:absolute;
+  bottom:14px;
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  border:2px solid rgba(255,255,255,.6);
+  background:rgba(255,255,255,.25);
+  z-index:5;
+  pointer-events:none;
+}
+.sp-stop-dot.start { left:6px; }
+.sp-stop-dot.end   { right:38px; }
+
 /* MOVERS */
 .sp-mover { position:absolute; top:50%; transform:translateY(-50%); pointer-events:none; z-index:4; display:flex; flex-direction:column; align-items:center; }
 .sp-mover-emoji { font-size:1.7rem; filter:drop-shadow(0 2px 5px rgba(0,0,0,.7)); animation:bob .8s ease-in-out infinite alternate; }
@@ -171,10 +204,10 @@ body.finish-mode { background:#0a0a0a; }
       <div class="spec-sub">spectator view · live race</div>
     </div>
     <div class="header-right">
-      
+      <button class="btn-qr" onclick="loadMbtaData(true)">🎮 DEMO MODE</button>
+      <button class="btn-qr" onclick="loadMbtaData(false)" style="background:#ff6b6b; color:white; border-color:#da291c;">🚂 LIVE MBTA</button>
       <button class="btn-finish" onclick="triggerFinish()">🏁 FINISH</button>
-      <div class="spec-live"><div class="ldot"></div>LIVE</div>
-    </div>
+    </div>  
   </div>
 
   <!-- GRADE BAR -->
@@ -235,10 +268,10 @@ body.finish-mode { background:#0a0a0a; }
       </div>
     </div>
 
-    <!-- GREEN LINE -->
+    <!-- GREEN LINE — with Boylston and Park St stop labels -->
     <div class="sp-track-card tc-g">
       <div class="sp-track-top">
-        <span class="sp-track-name">🟢 GREEN LINE · 13 km/h</span>
+        <span class="sp-track-name" id="green-line-name">🟢 GREEN LINE · 13 km/h</span>
         <span style="display:flex;align-items:center;gap:6px"><span class="sp-gap-chip" id="sp-gap-g" style="background:rgba(0,0,0,.3);color:rgba(255,255,255,.7)">…</span><button class="btn-collapse" onclick="toggleTrack(this)">▼</button></span>
       </div>
       <div class="sp-scene" id="sp-scene-g">
@@ -246,6 +279,12 @@ body.finish-mode { background:#0a0a0a; }
         <div class="sp-rfill" id="sp-rfill-g" style="width:0%"></div>
         <div class="sp-rail-t"></div><div class="sp-rail-b"></div>
         <div class="sp-finish"></div><div class="sp-finish-flag">🏁</div>
+        <!-- Stop dots -->
+        <div class="sp-stop-dot start"></div>
+        <div class="sp-stop-dot end"></div>
+        <!-- Stop name labels -->
+        <div class="sp-stop-label start">🚉 BOYLSTON</div>
+        <div class="sp-stop-label end">🚉 PARK ST</div>
         <div class="sp-mover" id="sp-mt-g" style="left:8px"><span class="sp-mover-emoji">🚃</span><div class="sp-mtag">13 km/h</div></div>
       </div>
     </div>
@@ -261,6 +300,12 @@ body.finish-mode { background:#0a0a0a; }
         <div class="sp-rfill" id="sp-rfill-r" style="width:0%"></div>
         <div class="sp-rail-t"></div><div class="sp-rail-b"></div>
         <div class="sp-finish"></div><div class="sp-finish-flag">🏁</div>
+        <!-- Stop dots -->
+        <div class="sp-stop-dot start"></div>
+        <div class="sp-stop-dot end"></div>
+        <!-- Stop name labels for Red Line: Park St → Downtown Crossing -->
+        <div class="sp-stop-label start">🚉 PARK ST</div>
+        <div class="sp-stop-label end">🚉 DOWNTOWN XNG</div>
         <div class="sp-mover" id="sp-mt-r" style="left:8px"><span class="sp-mover-emoji">🚇</span><div class="sp-mtag">32 km/h</div></div>
       </div>
     </div>
@@ -276,6 +321,12 @@ body.finish-mode { background:#0a0a0a; }
         <div class="sp-rfill" id="sp-rfill-o" style="width:0%"></div>
         <div class="sp-rail-t"></div><div class="sp-rail-b"></div>
         <div class="sp-finish"></div><div class="sp-finish-flag">🏁</div>
+        <!-- Stop dots -->
+        <div class="sp-stop-dot start"></div>
+        <div class="sp-stop-dot end"></div>
+        <!-- Stop name labels for Orange Line: State → Downtown Crossing -->
+        <div class="sp-stop-label start">🚉 STATE</div>
+        <div class="sp-stop-label end">🚉 DOWNTOWN XNG</div>
         <div class="sp-mover" id="sp-mt-o" style="left:8px"><span class="sp-mover-emoji">🚊</span><div class="sp-mtag">38 km/h</div></div>
       </div>
     </div>
@@ -294,14 +345,12 @@ function playCheer(intensity=1){
   const bufSz = AC.sampleRate * dur;
   const buf = AC.createBuffer(1, bufSz, AC.sampleRate);
   const data = buf.getChannelData(0);
-  // layered filtered noise that sounds like a crowd
   for(let i=0;i<bufSz;i++){
     data[i] = (Math.random()*2-1) * Math.pow(1 - i/bufSz, 0.3);
   }
   const src = AC.createBufferSource();
   src.buffer = buf;
 
-  // bandpass to make it sound like cheering voices
   const bp1 = AC.createBiquadFilter(); bp1.type='bandpass'; bp1.frequency.value=900; bp1.Q.value=0.8;
   const bp2 = AC.createBiquadFilter(); bp2.type='bandpass'; bp2.frequency.value=2200; bp2.Q.value=0.5;
 
@@ -310,7 +359,6 @@ function playCheer(intensity=1){
   gain.gain.linearRampToValueAtTime(intensity * 0.7, AC.currentTime + 0.15);
   gain.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
 
-  // Slight wavey modulation for the "wave" feel
   const lfo = AC.createOscillator(); lfo.frequency.value = 5;
   const lfoGain = AC.createGain(); lfoGain.gain.value = 0.15;
   lfo.connect(lfoGain); lfoGain.connect(gain.gain);
@@ -324,8 +372,7 @@ function playCheer(intensity=1){
 }
 
 function playFinishFanfare(){
-  // quick triumphant ascending notes
-  const notes = [523, 659, 784, 1047]; // C5 E5 G5 C6
+  const notes = [523, 659, 784, 1047];
   notes.forEach((freq, i) => {
     const osc = AC.createOscillator();
     const g   = AC.createGain();
@@ -434,7 +481,6 @@ function updateGrade(ms){
 ═══════════════════════════════════════════════ */
 function triggerFinish(){
   AC.resume();
-  // count trains beaten
   const beaten = TRAINS.filter(t => youDist > trainDist[t.id]).length;
   const grade  = getGrade(prMs);
 
@@ -456,9 +502,11 @@ function closeFinish(){
 
 /* ═══════════════════════════════════════════════
    RACE LOGIC
+   WINDOW_M reduced to 150m so each step of movement
+   fills the progress bar much faster — more exciting!
 ═══════════════════════════════════════════════ */
 const TRAINS=[{id:'g',trainMs:3.611,color:'#00ff87'},{id:'r',trainMs:8.889,color:'#ff6b6b'},{id:'o',trainMs:10.556,color:'#ffb347'}];
-const WINDOW_M=500;
+const WINDOW_M = 150;  // ← was 500; now each meter = 3.3× more progress bar fill
 let curMs=0, youDist=0, lastTs=null, prMs=0, ghostDist=0;
 const trainDist={g:0,r:0,o:0}, prevAhead={g:false,r:false,o:false};
 
@@ -468,7 +516,7 @@ function raceTick(ts){
   if(lastTs!==null){
     const dt=Math.min((ts-lastTs)/1000,.2);
     youDist+=curMs*dt;
-    ghostDist+=prMs*dt; // ghost runs at PR speed continuously
+    ghostDist+=prMs*dt;
     TRAINS.forEach(t=>{trainDist[t.id]+=t.trainMs*dt;});
   }
   lastTs=ts;
@@ -485,7 +533,6 @@ function raceTick(ts){
     const t=document.getElementById('sp-you-tag');   if(t)t.textContent=(curMs*3.6).toFixed(1)+' km/h';
     const c=document.getElementById('you-dist-chip');if(c)c.textContent=youDist.toFixed(0)+' m';
     const gt=document.getElementById('ghost-tag');   if(gt)gt.textContent='👻 '+(prMs*3.6).toFixed(1)+' PR';
-    // show ghost only if we have a PR
     if(gh) gh.style.display = prMs > 0.5 ? 'flex' : 'none';
   }
 
@@ -538,7 +585,6 @@ function updateUI(ms){
   if(ms>prMs){
     const wasPr=prMs;
     prMs=ms;
-    // reset ghost to current position so it races from same spot
     if(wasPr < 0.5) ghostDist = youDist;
     document.getElementById('pr-val').textContent=(prMs*3.6).toFixed(1);
     document.getElementById('pr-sub').textContent='km/h · '+prMs.toFixed(2)+' m/s';
@@ -559,6 +605,38 @@ function toggleTrack(btn){
 function setSpeed(ms){if(!isFinite(ms)||ms<0)return;curMs=ms;updateUI(ms);}
 
 async function poll(){try{const r=await fetch('/api/distance'),d=await r.json();setSpeed(parseFloat(d.distance??d.speed??0));}catch(_){}}
+
+async function loadMbtaData(isDemo) {
+  const url = isDemo ? '/api/train?mode=demo' : '/api/train';
+  
+  try {
+    const greenLineLabel = document.getElementById('green-line-name');
+    greenLineLabel.textContent = "🟢 GREEN LINE · FETCHING T DATA...";
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.status === 'success' && data.travel_time_seconds) {
+      const routeDistanceMeters = 274; 
+      const newSpeedMs = routeDistanceMeters / data.travel_time_seconds;
+
+      const greenTrain = TRAINS.find(t => t.id === 'g');
+      if (greenTrain) {
+        greenTrain.trainMs = newSpeedMs;
+      }
+
+      const kmh = (newSpeedMs * 3.6).toFixed(1);
+      greenLineLabel.textContent = `🟢 GREEN LINE · ${kmh} km/h (Train ${data.train_id || 'LIVE'})`;
+      
+      console.log(`Successfully loaded train! Travel time: ${data.travel_time_seconds}s. Speed: ${newSpeedMs} m/s`);
+    } else {
+      greenLineLabel.textContent = "🟢 GREEN LINE · API ERROR!";
+      console.error("API didn't return a valid time", data);
+    }
+  } catch (error) {
+    console.error("Fetch failed", error);
+  }
+}
 
 setSpeed(0);
 requestAnimationFrame(raceTick);
