@@ -118,19 +118,19 @@ void loop() {
                        + "  speed: " + String(step_speed) + " m/s"
                        + "  avg: " + String(avg_speed) + " m/s"
                        + "  dist: " + String(distance) + " cm");
+
+        // publish speed only when a new step is detected
+        if (!mqtt.connected()) mqtt_reconnect();
+        mqtt.loop();
+        String speedPayload = String(avg_speed);
+        mqtt.publish(MQTT_TOPIC_SPEED, speedPayload.c_str());
     } else if (!foot_down) {
         in_step = false;
     }
 
-    // MQTT keep-alive + publish distance & speed every cycle
+    // MQTT keep-alive (no publish every cycle)
     if (!mqtt.connected()) mqtt_reconnect();
     mqtt.loop();
-
-    String distPayload = String(distance);
-    mqtt.publish(MQTT_TOPIC, distPayload.c_str());
-
-    String speedPayload = String(avg_speed);
-    mqtt.publish(MQTT_TOPIC_SPEED, speedPayload.c_str());
 
     delay(50);
 }

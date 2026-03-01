@@ -206,21 +206,21 @@ const TRAINS=[
   {id:'r',trainMs:8.9,  color:'#ff6b6b'},
   {id:'o',trainMs:10.5, color:'#ffb347'},
 ];
-const MAX_MS=110.4, RACE_LEN=30000;
-let curMs=0, raceStart=performance.now();
+const MAX_MS=12;   // max speed for track scaling (m/s)
+let curMs=0;
 const prevAhead={};
 
-function speedToX(ms,frac,w){
-  const usable=w-80, dist=ms*frac, maxD=MAX_MS*frac||.001;
-  return Math.min((dist/maxD)*usable,usable-15)+8;
+// Position each mover purely by current speed ratio (no time-based race)
+function speedToX(ms,w){
+  const usable=w-80;
+  return Math.min((ms/MAX_MS)*usable, usable-15)+8;
 }
 
 function raceTick(){
-  const frac=Math.min((performance.now()-raceStart)/RACE_LEN,1);
   TRAINS.forEach(({id,trainMs,color})=>{
     const scene=document.getElementById(`sp-scene-${id}`); if(!scene)return;
     const w=scene.offsetWidth;
-    const youX=speedToX(curMs,frac,w), tX=speedToX(trainMs,frac,w);
+    const youX=speedToX(curMs,w), tX=speedToX(trainMs,w);
     const my=document.getElementById(`sp-my-${id}`), mt=document.getElementById(`sp-mt-${id}`);
     if(my) my.style.left=youX+'px';
     if(mt) mt.style.left=tX+'px';
@@ -229,7 +229,7 @@ function raceTick(){
     const tag=document.getElementById(`sp-you-tag-${id}`);
     if(tag) tag.textContent=(curMs*3.6).toFixed(1)+' km/h';
     const gap=document.getElementById(`sp-gap-${id}`);
-    const ahead=youX>tX;
+    const ahead=curMs>trainMs;
     if(ahead){
       gap.style.background='#ffe44d'; gap.style.color='#222'; gap.textContent='🏆 AHEAD!';
       if(!prevAhead[id]){
@@ -246,7 +246,6 @@ function raceTick(){
       prevAhead[id]=false;
     }
   });
-  if(frac>=1) raceStart=performance.now();
   requestAnimationFrame(raceTick);
 }
 
@@ -284,7 +283,7 @@ function setSpeed(ms){
 async function poll(){
   try{
     const r=await fetch('/api/distance'), d=await r.json();
-    setSpeed(parseFloat(d.distance??d.speed??0));
+    setSpeed(parseFloat(d.speed??0));
   }catch(_){}
 }
 
@@ -293,21 +292,23 @@ setSpeed(0);
 requestAnimationFrame(raceTick);
 
 // realtime updates via server‑sent events (MQTT data relayed by Flask)
+let sseOpen = false;
 const es = new EventSource('/stream');
+es.onopen = function() { sseOpen = true; };
 es.onmessage = function(e) {
-    // payload: "<distance>,<speed>"
-    if (e.data && e.data !== "null") {
-        const parts = e.data.split(',');
-        const speed = parseFloat(parts[1] || '0');
-        setSpeed(speed);
+    // payload is just the speed value (m/s), sent once per step
+    if (e.data && e.data !== "null" && e.data !== '') {
+        const speed = parseFloat(e.data);
+        if (isFinite(speed)) setSpeed(speed);
     }
 };
 es.onerror = function() {
+    sseOpen = false;
     console.error('SSE error');
 };
 
-// keep polling as a fallback in case SSE fails
-setInterval(poll,500);
+// polling fallback — only fires when SSE is not connected
+setInterval(function(){ if(!sseOpen) poll(); }, 500);
 </script>
 </body>
 </html>
