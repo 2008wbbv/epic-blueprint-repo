@@ -1,0 +1,5 @@
+{
+    "sketch": "hardware.ino",
+    "board": "arduino:renesas_uno:unor4wifi",
+    "port": "COM6"
+}

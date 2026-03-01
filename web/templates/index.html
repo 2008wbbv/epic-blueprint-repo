@@ -1,1 +1,15 @@
-test
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Distance Sensor</title>
+</head>
+<body>
+    <h1>Distance Reading</h1>
+    {% if distance is not none %}
+        <p>Current distance: {{ distance }} cm</p>
+    {% else %}
+        <p><em>No data available yet.</em></p>
+    {% endif %}
+</body>
+</html>
