@@ -128,6 +128,11 @@ void loop() {
         in_step = false;
     }
 
+    // Update LEDs based on current average speed
+    digitalWrite(LED_GREEN,  avg_speed >= SPEED_GREEN  ? HIGH : LOW);
+    digitalWrite(LED_YELLOW, avg_speed >= SPEED_YELLOW ? HIGH : LOW);
+    digitalWrite(LED_RED,    avg_speed >= SPEED_RED    ? HIGH : LOW);
+
     // MQTT keep-alive (no publish every cycle)
     if (!mqtt.connected()) mqtt_reconnect();
     mqtt.loop();
